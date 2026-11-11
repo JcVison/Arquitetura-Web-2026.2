@@ -1,0 +1,13 @@
+import {Router} from 'express';
+import rateLimit from 'express-rate-limit';
+import {auth,admin,wrap} from '../middleware/auth.js';
+import * as account from '../controllers/auth.js';
+import * as labs from '../controllers/labs.js';
+import * as reservations from '../controllers/reservations.js';
+const router=Router();
+const limiter=rateLimit({windowMs:15*60*1000,limit:30,standardHeaders:'draft-7',legacyHeaders:false,message:{message:'Muitas tentativas. Tente novamente em 15 minutos.'}});
+router.post('/auth/register',limiter,wrap(account.register));router.post('/auth/login',limiter,wrap(account.login));router.get('/auth/me',auth,account.me);
+router.use(auth);
+router.get('/labs',wrap(labs.list));router.post('/labs',admin,wrap(labs.create));router.put('/labs/:id',admin,wrap(labs.update));router.delete('/labs/:id',admin,wrap(labs.remove));
+router.get('/availability',wrap(reservations.availability));router.get('/reservations',wrap(reservations.list));router.post('/reservations',wrap(reservations.create));router.put('/reservations/:id',wrap(reservations.update));router.delete('/reservations/:id',wrap(reservations.remove));
+export default router;

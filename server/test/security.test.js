@@ -1,0 +1,12 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import request from 'supertest';
+import jwt from 'jsonwebtoken';
+import {User} from '../src/models/index.js';
+import app from '../src/app.js';
+process.env.JWT_SECRET='test-secret-with-at-least-32-characters';
+test('API de saúde responde',async()=>{await request(app).get('/api/health').expect(200)});
+test('Reservas exigem autenticação',async()=>{await request(app).get('/api/reservations').expect(401)});
+test('Token adulterado não permite acesso',async()=>{await request(app).get('/api/labs').set('Authorization','Bearer invalido').expect(401)});
+test('Cadastro rejeita dados inválidos antes de acessar banco',async()=>{const r=await request(app).post('/api/auth/register').send({email:'invalido',password:'1',role:'admin'}).expect(400);assert.match(r.body.message,/email/)});
+test('Usuário comum não pode criar, editar ou excluir laboratórios',async()=>{const original=User.findById;User.findById=async()=>({id:'507f1f77bcf86cd799439011',role:'user'});try{const token=jwt.sign({sub:'507f1f77bcf86cd799439011'},process.env.JWT_SECRET);for(const [verb,url] of [['post','/api/labs'],['put','/api/labs/507f1f77bcf86cd799439012'],['delete','/api/labs/507f1f77bcf86cd799439012']])await request(app)[verb](url).set('Authorization','Bearer '+token).send({}).expect(403);}finally{User.findById=original}});
